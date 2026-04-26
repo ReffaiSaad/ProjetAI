@@ -1,0 +1,6 @@
+pandas
+numpy
+spacy
+gensim
+scikit-learn
+# Pour télécharger le modèle spaCy :  python -m spacy download en_core_web_sm
