@@ -1,92 +1,92 @@
 """
 run_pipeline.py
 ---------------
-Script principal — PARTIE 1.
-  1. Chargement des données
-  2. Prétraitement (ou chargement du cache .pkl)
-  3. Chargement des modèles Word2Vec sauvegardés
-  4. Vectorisation
+Pipeline complet IMDB Sentiment Analysis :
 
-Usage :
-    python run_pipeline.py
+1. Chargement des données
+2. Prétraitement (cache)
+3. Chargement Word2Vec
+4. Vectorisation
+5. Classification (SVM + Logistic Regression)
 """
 
 import os
 import numpy as np
 
-from src.data_loader   import load_data
+from src.data_loader import load_data
 from src.preprocessing import preprocess_fast, save_cleaned, load_cleaned
 from src.vectorization import vectorize_texts, load_w2v
+from src.train_models import run_all_models
 
-# ─── Chemins ──────────────────────────────────────────────────────────────────
-DATASET_PATH      = "data/IMDB Dataset.csv"
-CLEANED_PATH      = "data/cleaned_texts.pkl"
+
+# ─────────────────────────────────────────────
+# PATHS
+# ─────────────────────────────────────────────
+DATASET_PATH = "data/IMDB Dataset.csv"
+CLEANED_PATH = "data/cleaned_texts.pkl"
+
 W2V_SKIPGRAM_PATH = "models/w2v.model"
 W2V_CBOW_PATH     = "models/w2v_cbow.model"
-# ──────────────────────────────────────────────────────────────────────────────
 
 
+# ─────────────────────────────────────────────
+# MAIN PIPELINE
+# ─────────────────────────────────────────────
 def main():
 
-    # ── 1. Chargement des données ─────────────────────────────────────────────
-    print("\n[1/3] Chargement du dataset...")
+    print("\n" + "="*70)
+    print("🎬 IMDB SENTIMENT ANALYSIS PIPELINE")
+    print("="*70)
+
+    # ── 1. LOAD DATA ───────────────────────────
+    print("\n[1/5] Loading dataset...")
     texts, labels = load_data(DATASET_PATH)
 
-    # ── 2. Prétraitement (cache) ──────────────────────────────────────────────
+    # ── 2. PREPROCESSING ───────────────────────
     if os.path.exists(CLEANED_PATH):
-        print(f"\n[2/3] Cache trouvé → chargement de {CLEANED_PATH}")
+        print("\n[2/5] Loading cached preprocessing...")
         cleaned_texts = load_cleaned(CLEANED_PATH)
     else:
-        print("\n[2/3] Prétraitement en cours (peut prendre quelques minutes)...")
+        print("\n[2/5] Preprocessing texts...")
         cleaned_texts = preprocess_fast(texts)
         save_cleaned(cleaned_texts, CLEANED_PATH)
 
-    print(f"       Total reviews    : {len(cleaned_texts)}")
+    print(f"Total reviews: {len(cleaned_texts)}")
 
-    # ── Aperçu avant / après prétraitement ───────────────────────────────────
-    print("\n" + "─"*60)
-    print("  APERÇU PRÉTRAITEMENT — review #0")
-    print("─"*60)
-    print("  AVANT :")
-    print(f"    {texts[0][:300]}...")
-    print("\n  APRÈS (tokens) :")
-    print(f"    {cleaned_texts[0][:20]}")
-    print(f"    ({len(cleaned_texts[0])} tokens)")
-    print("─"*60)
+    # ── SAMPLE ────────────────────────────────
+    print("\n" + "-"*60)
+    print("Sample review:")
+    print("-"*60)
+    print("RAW   :", texts[0][:200])
+    print("CLEAN :", cleaned_texts[0][:15])
+    print("-"*60)
 
-    # ── 3. Chargement des modèles Word2Vec ────────────────────────────────────
-    print("\n[3/3] Chargement des modèles Word2Vec...")
+    # ── 3. LOAD WORD2VEC ───────────────────────
+    print("\n[3/5] Loading Word2Vec models...")
     w2v_skipgram = load_w2v(W2V_SKIPGRAM_PATH)
     w2v_cbow     = load_w2v(W2V_CBOW_PATH)
 
-    # ── Vectorisation ─────────────────────────────────────────────────────────
-    print("\nVectorisation en cours...")
+    # ── 4. VECTORISATION ───────────────────────
+    print("\n[4/5] Vectorizing texts...")
+
     X_skipgram = vectorize_texts(cleaned_texts, w2v_skipgram)
     X_cbow     = vectorize_texts(cleaned_texts, w2v_cbow)
-    y          = np.array(labels)
 
-    # ── Aperçu vectorisation ──────────────────────────────────────────────────
-    print("\n" + "─"*60)
-    print("  APERÇU VECTORISATION")
-    print("─"*60)
-    print(f"  Nombre de reviews    : {X_skipgram.shape[0]}")
-    print(f"  Taille du vecteur    : {X_skipgram.shape[1]} dimensions")
-    print()
-    for i in range(3):
-        print(f"  Review #{i} — label : {labels[i]}")
-        print(f"    Skip-gram  : [{', '.join(f'{v:.4f}' for v in X_skipgram[i][:6])} ...]")
-        print(f"    CBOW       : [{', '.join(f'{v:.4f}' for v in X_cbow[i][:6])} ...]")
-        print()
-    print("─"*60)
+    y = np.array(labels)
 
-    print("\n✅ Pipeline PARTIE 1 terminé.")
-    print("   Données prêtes pour la PARTIE 2 :")
-    print(f"     - X_skipgram : {X_skipgram.shape}")
-    print(f"     - X_cbow     : {X_cbow.shape}")
-    print(f"     - y          : {y.shape}\n")
+    print(f"\nShape Skip-gram : {X_skipgram.shape}")
+    print(f"Shape CBOW      : {X_cbow.shape}")
 
-    return X_skipgram, X_cbow, y, labels
+    # ── 5. CLASSIFICATION ─────────────────────
+    print("\n[5/5] Training models...")
+
+    run_all_models(X_skipgram, X_cbow, labels)
+
+    print("\n" + "="*70)
+    print("✅ PIPELINE COMPLETED SUCCESSFULLY")
+    print("="*70)
 
 
+# ─────────────────────────────────────────────
 if __name__ == "__main__":
     main()
